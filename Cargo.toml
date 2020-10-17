@@ -1,0 +1,9 @@
+[package]
+name = "dumbsynth"
+version = "0.1.0"
+authors = ["kolen <incredible.angst@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+dasp = { version = "0.11.0", features = ["signal"] }
+wav = "0.4.1"
