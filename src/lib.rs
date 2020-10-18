@@ -1,12 +1,10 @@
 use dasp::signal::Signal;
 #[macro_use]
 extern crate vst;
-use vst::api::Events;
-use vst::api::Supported;
+use vst::api::{Events, Supported};
 use vst::buffer::AudioBuffer;
 use vst::event::Event;
-use vst::plugin::CanDo;
-use vst::plugin::{Info, Plugin};
+use vst::plugin::{CanDo, Category, Info, Plugin};
 
 const SAMP_RATE: i32 = 44_100;
 
@@ -89,6 +87,10 @@ impl Plugin for DumbsynthPlugin {
             name: "Dumbsynth".to_string(),
             unique_id: 1357,
             outputs: 1,
+            inputs: 0,
+            category: Category::Synth,
+            parameters: 0,
+            initial_delay: 0,
 
             ..Default::default()
         }
