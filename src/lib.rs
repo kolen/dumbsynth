@@ -23,9 +23,9 @@ impl Saw {
 }
 
 impl Signal for Saw {
-    type Frame = i16;
+    type Frame = f32;
 
-    fn next(&mut self) -> i16 {
+    fn next(&mut self) -> f32 {
         let mut value = 0f32;
 
         let mut harm_f = self.frequency;
@@ -45,7 +45,7 @@ impl Signal for Saw {
         value = -(std::f32::consts::FRAC_1_PI * value);
 
         self.phase += 1;
-        (value * 32768f32) as i16
+        value
     }
 }
 
@@ -86,7 +86,7 @@ impl Plugin for DumbsynthPlugin {
         Info {
             name: "Dumbsynth".to_string(),
             unique_id: 1357,
-            outputs: 1,
+            outputs: 2,
             inputs: 0,
             category: Category::Synth,
             parameters: 0,
@@ -115,8 +115,12 @@ impl Plugin for DumbsynthPlugin {
     fn process(&mut self, buffer: &mut AudioBuffer<f32>) {
         let n_samples = buffer.samples();
         let (_, mut outputs) = buffer.split();
+        let output_count = outputs.len();
         for sample_i in 0..n_samples {
-            outputs.get_mut(0)[sample_i] = self.note.as_mut().map_or(0.0, |n| n.next() as f32);
+            let output = self.note.as_mut().map_or(0.0, |n| n.next());
+            for chan_i in 0..output_count {
+                outputs.get_mut(chan_i)[sample_i] = output;
+            }
         }
     }
 }
