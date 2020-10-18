@@ -1,4 +1,12 @@
 use dasp::signal::Signal;
+#[macro_use]
+extern crate vst;
+use vst::api::Events;
+use vst::api::Supported;
+use vst::buffer::AudioBuffer;
+use vst::event::Event;
+use vst::plugin::CanDo;
+use vst::plugin::{Info, Plugin};
 
 const SAMP_RATE: i32 = 44_100;
 
@@ -42,3 +50,73 @@ impl Signal for Saw {
         (value * 32768f32) as i16
     }
 }
+
+// TODO: use library
+fn midi_pitch_to_freq(pitch: u8) -> f64 {
+    const A4_PITCH: i8 = 69;
+    const A4_FREQ: f64 = 440.0;
+
+    ((f64::from(pitch as i8 - A4_PITCH)) / 12.).exp2() * A4_FREQ
+}
+
+#[derive(Default)]
+struct DumbsynthPlugin {
+    note: Option<Saw>,
+}
+
+impl DumbsynthPlugin {
+    fn process_midi_event(&mut self, data: [u8; 3]) {
+        match data[0] {
+            128 => self.note_off(data[1]),
+            144 => self.note_on(data[1]),
+            _ => (),
+        }
+    }
+
+    fn note_on(&mut self, note: u8) {
+        let freq = midi_pitch_to_freq(note);
+        self.note = Some(Saw::new(freq as f32));
+    }
+
+    fn note_off(&mut self, _note: u8) {
+        self.note = None; // TODO: don't turn off if another key depressed
+    }
+}
+
+impl Plugin for DumbsynthPlugin {
+    fn get_info(&self) -> Info {
+        Info {
+            name: "Dumbsynth".to_string(),
+            unique_id: 1357,
+            outputs: 1,
+
+            ..Default::default()
+        }
+    }
+
+    fn can_do(&self, can_do: CanDo) -> Supported {
+        match can_do {
+            CanDo::ReceiveMidiEvent => Supported::Yes,
+            _ => Supported::Maybe,
+        }
+    }
+
+    fn process_events(&mut self, events: &Events) {
+        for event in events.events() {
+            match event {
+                Event::Midi(ev) => self.process_midi_event(ev.data),
+                _ => (),
+            }
+        }
+    }
+
+    fn process(&mut self, buffer: &mut AudioBuffer<f32>) {
+        let n_samples = buffer.samples();
+        let (_, mut outputs) = buffer.split();
+        for sample_i in 0..n_samples {
+            outputs.get_mut(0)[sample_i] = self.note.as_mut().map_or(0.0, |n| n.next() as f32);
+        }
+    }
+}
+
+plugin_main!(DumbsynthPlugin);
